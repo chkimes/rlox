@@ -1,35 +1,51 @@
 mod chunk;
+mod compiler;
 mod debug;
+mod scanner;
 mod value;
 mod vm;
 
 use chunk::*;
-use std::convert::TryInto;
+use std::io::Write;
 use vm::*;
 
 fn main() {
     let mut chunk = Chunk::new();
     let mut vm = VM::new();
+    let args: Vec<String> = std::env::args().collect();
 
-    let constant = chunk.add_constant(1.2).try_into().unwrap();
-    chunk.write_op(Op::Constant, 123);
-    chunk.write(constant, 123);
+    if args.len() == 1 {
+        repl(&mut vm);
+    } else if args.len() == 2 {
+        run_file(&args[1], &mut vm);
+    } else {
+        println!("Usage: rlox [path]");
+        std::process::exit(64);
+    }
+}
 
-    let constant = chunk.add_constant(3.4).try_into().unwrap();
-    chunk.write_op(Op::Constant, 123);
-    chunk.write(constant, 123);
+fn repl(vm: &mut VM) {
+    let mut line = String::new();
+    loop {
+        print!("> ");
+        std::io::stdout().lock().flush().unwrap();
 
-    chunk.write_op(Op::Add, 123);
+        match std::io::stdin().read_line(&mut line) {
+            Ok(_)  => vm.interpret(&line),
+            Err(_) => { print!("\n"); break }
+        };
 
-    let constant = chunk.add_constant(5.6).try_into().unwrap();
-    chunk.write_op(Op::Constant, 123);
-    chunk.write(constant, 123);
+        line.clear();
+    }
+}
 
-    chunk.write_op(Op::Divide, 123);
-    chunk.write_op(Op::Negate, 123);
+fn run_file(path: &String, vm: &mut VM) {
+    let source = std::fs::read_to_string(path).unwrap();
+    let result = vm.interpret(&source);
 
-    chunk.write_op(Op::Return, 123);
-    chunk.disassemble("test chunk");
-
-    vm.interpret(chunk);
+    match result {
+        InterpretResult::CompileError => std::process::exit(65),
+        InterpretResult::RuntimeError => std::process::exit(70),
+        _ => { }
+    }
 }

@@ -21,10 +21,9 @@ impl VM {
         }
     }
 
-    pub fn interpret(&mut self, chunk: Chunk) -> InterpretResult {
-        self.chunk = chunk;
-        self.ip = 0;
-        self.run()
+    pub fn interpret(&mut self, source: &String) -> InterpretResult {
+        crate::compiler::compile(source);
+        InterpretResult::Ok
     }
 
     fn reset_stack(&mut self) {
