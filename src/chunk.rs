@@ -7,8 +7,13 @@ use crate::value::*;
 #[derive(FromPrimitive)]
 #[derive(ToPrimitive)]
 pub enum Op {
-    CONSTANT,
-    RETURN,
+    Constant,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Negate,
+    Return,
 }
 
 pub struct Chunk {

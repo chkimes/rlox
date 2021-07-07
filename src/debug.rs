@@ -13,7 +13,7 @@ impl Chunk {
         }
     }
 
-    fn disassemble_instruction(&self, offset: usize) -> usize {
+    pub fn disassemble_instruction(&self, offset: usize) -> usize {
         print!("{:04} ", offset);
 
         if offset > 0 && self.lines[offset] == self.lines[offset - 1] {
@@ -24,8 +24,13 @@ impl Chunk {
 
         let instruction = self.code[offset];
         match FromPrimitive::from_u8(instruction) {
-            Some(Op::RETURN)   => simple_instruction("OP_RETURN", offset),
-            Some(Op::CONSTANT) => constant_instruction("OP_CONSTANT", self, offset),
+            Some(Op::Constant) => constant_instruction("OP_CONSTANT", self, offset),
+            Some(Op::Add)      => simple_instruction("OP_ADD", offset),
+            Some(Op::Subtract) => simple_instruction("OP_SUBTRACT", offset),
+            Some(Op::Multiply) => simple_instruction("OP_MULTIPLY", offset),
+            Some(Op::Divide)   => simple_instruction("OP_DIVIDE", offset),
+            Some(Op::Negate)   => simple_instruction("OP_NEGATE", offset),
+            Some(Op::Return)   => simple_instruction("OP_RETURN", offset),
             None               => { println!("Unknown opcode: {}", instruction); offset + 1 }
         }
     }
