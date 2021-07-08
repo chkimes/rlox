@@ -62,13 +62,23 @@ impl Precedence {
 
 fn get_rule<'a>(token_type: TokenType) -> ParseRule<'a> {
     match token_type {
-        TokenType::LeftParen => ParseRule { prefix: Some(Compiler::grouping), infix: None,                   precedence: Precedence::None },
-        TokenType::Minus     => ParseRule { prefix: Some(Compiler::unary),    infix: Some(Compiler::binary), precedence: Precedence::Term },
-        TokenType::Plus      => ParseRule { prefix: None,                     infix: Some(Compiler::binary), precedence: Precedence::Term },
-        TokenType::Slash |
-        TokenType::Star      => ParseRule { prefix: None,                     infix: Some(Compiler::binary), precedence: Precedence::Factor },
-        TokenType::Number    => ParseRule { prefix: Some(Compiler::number),   infix: None,                   precedence: Precedence::None },
-        _                    => ParseRule { prefix: None,                     infix: None,                   precedence: Precedence::None }
+        TokenType::LeftParen    => ParseRule { prefix: Some(Compiler::grouping), infix: None,                   precedence: Precedence::None },
+        TokenType::Minus        => ParseRule { prefix: Some(Compiler::unary),    infix: Some(Compiler::binary), precedence: Precedence::Term },
+        TokenType::Plus         => ParseRule { prefix: None,                     infix: Some(Compiler::binary), precedence: Precedence::Term },
+        TokenType::Slash        |
+        TokenType::Star         => ParseRule { prefix: None,                     infix: Some(Compiler::binary), precedence: Precedence::Factor },
+        TokenType::Number       => ParseRule { prefix: Some(Compiler::number),   infix: None,                   precedence: Precedence::None },
+        TokenType::Bang         => ParseRule { prefix: Some(Compiler::unary),    infix: None,                   precedence: Precedence::None },
+        TokenType::BangEqual    |
+        TokenType::EqualEqual   => ParseRule { prefix: None,                     infix: Some(Compiler::binary), precedence: Precedence::Equality },
+        TokenType::Greater      |
+        TokenType::GreaterEqual |
+        TokenType::Less         |
+        TokenType::LessEqual    => ParseRule { prefix: None,                     infix: Some(Compiler::binary), precedence: Precedence::Comparison },
+        TokenType::Nil          |
+        TokenType::False        |
+        TokenType::True         => ParseRule { prefix: Some(Compiler::literal),  infix: None,                   precedence: Precedence::None },
+        _                       => ParseRule { prefix: None,                     infix: None,                   precedence: Precedence::None }
     }
 }
 
@@ -109,9 +119,8 @@ impl<'a> Compiler<'a> {
 
         // Emit the operator instruction.
         match operator_type {
-            TokenType::Minus => {
-                self.emit_op(Op::Negate);
-            }
+            TokenType::Minus => self.emit_op(Op::Negate),
+            TokenType::Bang => self.emit_op(Op::Not),
             _ => return, // Unreachable.
         }
     }
@@ -122,10 +131,25 @@ impl<'a> Compiler<'a> {
         self.parse_precedence(rule.precedence.next());
 
         match operator_type {
-            TokenType::Plus  =>  self.emit_op(Op::Add),
-            TokenType::Minus =>  self.emit_op(Op::Subtract),
-            TokenType::Star  =>  self.emit_op(Op::Multiply),
-            TokenType::Slash =>  self.emit_op(Op::Divide),
+            TokenType::BangEqual    => self.emit_ops(Op::Equal, Op::Not),
+            TokenType::EqualEqual   => self.emit_op(Op::Equal),
+            TokenType::Greater      => self.emit_op(Op::Greater),
+            TokenType::GreaterEqual => self.emit_ops(Op::Less, Op::Not),
+            TokenType::Less         => self.emit_op(Op::Less),
+            TokenType::LessEqual    => self.emit_ops(Op::Greater, Op::Not),
+            TokenType::Plus         => self.emit_op(Op::Add),
+            TokenType::Minus        => self.emit_op(Op::Subtract),
+            TokenType::Star         => self.emit_op(Op::Multiply),
+            TokenType::Slash        => self.emit_op(Op::Divide),
+            _ => return, // Unreachable.
+        }
+    }
+
+    fn literal(&mut self) {
+        match self.parser.previous.token_type {
+            TokenType::Nil   => self.emit_op(Op::Nil),
+            TokenType::False => self.emit_op(Op::False),
+            TokenType::True  => self.emit_op(Op::True),
             _ => return, // Unreachable.
         }
     }
@@ -166,7 +190,7 @@ impl<'a> Compiler<'a> {
             .get_lexeme(&self.parser.previous)
             .parse()
             .unwrap();
-        self.emit_constant(value);
+        self.emit_constant(Value::Number(value));
     }
 
     fn emit_return(&mut self) {

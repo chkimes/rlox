@@ -7,10 +7,17 @@ use std::vec::Vec;
 #[derive(FromPrimitive, ToPrimitive)]
 pub enum Op {
     Constant,
+    Nil,
+    False,
+    True,
+    Equal,
+    Greater,
+    Less,
     Add,
     Subtract,
     Multiply,
     Divide,
+    Not,
     Negate,
     Return,
 }

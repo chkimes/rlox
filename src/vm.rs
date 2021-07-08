@@ -1,6 +1,7 @@
 use crate::chunk::*;
 use crate::compiler::*;
 use crate::value::*;
+use crate::value::Value::*;
 use num_traits::FromPrimitive;
 
 const STACK_MAX: usize = 256;
@@ -17,7 +18,7 @@ impl VM {
         VM {
             chunk: Chunk::new(),
             ip: 0,
-            stack: [0.0; STACK_MAX],
+            stack: [Nil; STACK_MAX],
             stack_top: 0,
         }
     }
@@ -49,6 +50,11 @@ impl VM {
         self.stack[self.stack_top]
     }
 
+    fn peek(&mut self, distance: usize) -> Value {
+        let index = self.stack_top - 1 - distance;
+        return self.stack[index];
+    }
+
     pub fn run(&mut self) -> InterpretResult {
         loop {
             if cfg!(feature = "DEBUG_TRACE_EXECUTION") {
@@ -74,29 +80,31 @@ impl VM {
                     let constant = self.chunk.constants.values[byte];
                     self.push(constant);
                 }
-                Op::Add => {
+                Op::Nil => self.push(Nil),
+                Op::False => self.push(Bool(false)),
+                Op::True => self.push(Bool(true)),
+                Op::Equal => {
                     let b = self.pop();
                     let a = self.pop();
-                    self.push(a + b);
+                    self.push(Bool(a == b));
                 }
-                Op::Subtract => {
-                    let b = self.pop();
-                    let a = self.pop();
-                    self.push(a - b);
-                }
-                Op::Multiply => {
-                    let b = self.pop();
-                    let a = self.pop();
-                    self.push(a * b);
-                }
-                Op::Divide => {
-                    let b = self.pop();
-                    let a = self.pop();
-                    self.push(a / b);
+                Op::Greater => crate::binary_op!(self, Bool, >),
+                Op::Less => crate::binary_op!(self, Bool, <),
+                Op::Add => crate::binary_op!(self, Number, +),
+                Op::Subtract => crate::binary_op!(self, Number, -),
+                Op::Multiply => crate::binary_op!(self, Number, *),
+                Op::Divide => crate::binary_op!(self, Number, /),
+                Op::Not => {
+                    let val = self.pop();
+                    self.push(Bool(is_falsey(val)))
                 }
                 Op::Negate => {
+                    if !self.peek(0).is_number() {
+                        crate::error!(self, "Operand must be a number.");
+                        return InterpretResult::RuntimeError;
+                    }
                     let value = self.pop();
-                    self.push(-value);
+                    self.push(Number(-value.as_number()));
                 }
                 Op::Return => {
                     print_value(self.pop());
@@ -104,6 +112,48 @@ impl VM {
                     return InterpretResult::Ok;
                 }
             };
+        }
+    }
+
+    fn runtime_error(&mut self, message: String) {
+        eprintln!("{}", message); // todo: format?
+
+        let instruction = self.ip - 1;
+        let line = self.chunk.lines[instruction];
+        eprintln!("[line {}] in script", line);
+        self.reset_stack();
+    }
+}
+
+fn is_falsey(val: Value) -> bool{
+    match val {
+        Nil => true,
+        Bool(b) => !b,
+        _ => false,
+    }
+}
+
+#[macro_export]
+macro_rules! error {
+    ($vm: expr, $format: expr) => {
+        $vm.runtime_error(format!($format))
+    };
+    ($vm: expr, $format: expr, $($args: expr),*) => {
+        $vm.runtime_error(format!($format, $($args)* ))
+    };
+}
+
+#[macro_export]
+macro_rules! binary_op {
+    ($vm:expr, $value_ctor:tt, $op:tt) => {
+        {
+            if !$vm.peek(0).is_number() || !$vm.peek(1).is_number() {
+                crate::error!($vm, "Operands must be numbers.");
+                return InterpretResult::RuntimeError;
+            }
+            let b = $vm.pop().as_number();
+            let a = $vm.pop().as_number();
+            $vm.push($value_ctor(a $op b));
         }
     }
 }
