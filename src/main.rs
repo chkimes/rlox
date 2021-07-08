@@ -29,8 +29,11 @@ fn repl(vm: &mut VM) {
         std::io::stdout().lock().flush().unwrap();
 
         match std::io::stdin().read_line(&mut line) {
-            Ok(_)  => vm.interpret(&line),
-            Err(_) => { print!("\n"); break }
+            Ok(_) => vm.interpret(&line),
+            Err(_) => {
+                print!("\n");
+                break;
+            }
         };
 
         line.clear();
@@ -44,6 +47,6 @@ fn run_file(path: &String, vm: &mut VM) {
     match result {
         InterpretResult::CompileError => std::process::exit(65),
         InterpretResult::RuntimeError => std::process::exit(70),
-        _ => { }
+        _ => {}
     }
 }

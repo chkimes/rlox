@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use std::iter::*;
 
 pub struct Scanner<'a> {
-    pub source: &'a[u8],
+    pub source: &'a [u8],
     start: usize,
     current: usize,
     line: u16,
@@ -29,8 +29,7 @@ impl Token {
     }
 }
 
-#[derive(FromPrimitive, ToPrimitive)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(FromPrimitive, ToPrimitive, Copy, Clone, PartialEq, Debug)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen, RightParen,
@@ -92,23 +91,39 @@ impl Scanner<'_> {
             '/' => return self.make_token(TokenType::Slash),
             '*' => return self.make_token(TokenType::Star),
             '!' => {
-                let tt = if self.match_char('=') { TokenType::BangEqual } else { TokenType::Bang };
+                let tt = if self.match_char('=') {
+                    TokenType::BangEqual
+                } else {
+                    TokenType::Bang
+                };
                 return self.make_token(tt);
-            },
+            }
             '=' => {
-                let tt = if self.match_char('=') { TokenType::EqualEqual } else { TokenType::Equal };
+                let tt = if self.match_char('=') {
+                    TokenType::EqualEqual
+                } else {
+                    TokenType::Equal
+                };
                 return self.make_token(tt);
-            },
+            }
             '<' => {
-                let tt = if self.match_char('=') { TokenType::LessEqual } else { TokenType::Less };
+                let tt = if self.match_char('=') {
+                    TokenType::LessEqual
+                } else {
+                    TokenType::Less
+                };
                 return self.make_token(tt);
-            },
+            }
             '>' => {
-                let tt = if self.match_char('=') { TokenType::GreaterEqual } else { TokenType::Greater };
+                let tt = if self.match_char('=') {
+                    TokenType::GreaterEqual
+                } else {
+                    TokenType::Greater
+                };
                 return self.make_token(tt);
-            },
+            }
             '"' => return self.string(),
-            _   => { }
+            _ => {}
         }
 
         return self.error_token();
@@ -137,13 +152,13 @@ impl Scanner<'_> {
             let c = self.peek();
             match c {
                 ' ' | '\r' | '\t' => {
-                  self.advance();
-                  break;
-                },
-                '\n'=> {
+                    self.advance();
+                    break;
+                }
+                '\n' => {
                     self.line += 1;
                     self.advance();
-                },
+                }
                 '/' => {
                     if self.peek_next() == '/' {
                         // A comment goes until the end of the line.
@@ -170,7 +185,7 @@ impl Scanner<'_> {
         if self.at_end() {
             return '\0';
         } else {
-            return self.source[self.current+1].try_into().unwrap();
+            return self.source[self.current + 1].try_into().unwrap();
         }
     }
 
@@ -190,9 +205,9 @@ impl Scanner<'_> {
             return self.error_token();
         }
 
-          // The closing quote.
-          self.advance();
-          return self.make_token(TokenType::String);
+        // The closing quote.
+        self.advance();
+        return self.make_token(TokenType::String);
     }
 
     fn number(&mut self) -> Token {
@@ -235,7 +250,7 @@ impl Scanner<'_> {
                     }
                 }
                 return TokenType::Identifier;
-            },
+            }
             'i' => return self.check_keyword(1, "f", TokenType::If),
             'n' => return self.check_keyword(1, "il", TokenType::Nil),
             'o' => return self.check_keyword(1, "r", TokenType::Or),
@@ -251,7 +266,7 @@ impl Scanner<'_> {
                     }
                 }
                 return TokenType::Identifier;
-            },
+            }
             'v' => return self.check_keyword(1, "ar", TokenType::Var),
             'w' => return self.check_keyword(1, "hile", TokenType::While),
             _   => return TokenType::Identifier,
@@ -292,7 +307,7 @@ impl Scanner<'_> {
     }
 
     pub fn get_lexeme(&self, token: &Token) -> &str {
-        return std::str::from_utf8(&self.source[token.start..token.start+token.length]).unwrap();
+        return std::str::from_utf8(&self.source[token.start..token.start + token.length]).unwrap();
     }
 }
 

@@ -27,20 +27,19 @@ struct ParseRule<'a> {
 
 type ParseFn<'a> = fn(&mut Compiler<'a>) -> ();
 
-#[derive(FromPrimitive)]
-#[derive(ToPrimitive)]
+#[derive(FromPrimitive, ToPrimitive)]
 enum Precedence {
     None,
-    Assignment,  // =
-    Or,          // or
-    And,         // and
-    Equality,    // == !=
-    Comparison,  // < > <= >=
-    Term,        // + -
-    Factor,      // * /
-    Unary,       // ! -
-    Call,        // . ()
-    Primary
+    Assignment, // =
+    Or,         // or
+    And,        // and
+    Equality,   // == !=
+    Comparison, // < > <= >=
+    Term,       // + -
+    Factor,     // * /
+    Unary,      // ! -
+    Call,       // . ()
+    Primary,
 }
 
 impl Precedence {
@@ -110,8 +109,10 @@ impl<'a> Compiler<'a> {
 
         // Emit the operator instruction.
         match operator_type {
-            TokenType::Minus => { self.emit_op(Op::Negate); }
-            _ => return // Unreachable.
+            TokenType::Minus => {
+                self.emit_op(Op::Negate);
+            }
+            _ => return, // Unreachable.
         }
     }
 
@@ -134,7 +135,7 @@ impl<'a> Compiler<'a> {
         let prefix_rule = get_rule(self.parser.previous.token_type).prefix;
         match prefix_rule {
             None => self.parser.error("Expect expression."),
-            Some(prefix_rule) => prefix_rule(self)
+            Some(prefix_rule) => prefix_rule(self),
         }
 
         let prec_byte = ToPrimitive::to_u8(&precedence).unwrap();
@@ -159,7 +160,12 @@ impl<'a> Compiler<'a> {
     }
 
     fn number(&mut self) {
-        let value: f64 = self.parser.scanner.get_lexeme(&self.parser.previous).parse().unwrap();
+        let value: f64 = self
+            .parser
+            .scanner
+            .get_lexeme(&self.parser.previous)
+            .parse()
+            .unwrap();
         self.emit_constant(value);
     }
 
@@ -243,7 +249,7 @@ impl Parser<'_> {
     fn error(&mut self, message: &str) {
         let previous = self.previous;
         self.error_at(&previous, message);
-      }
+    }
 
     fn error_at(&mut self, token: &Token, message: &str) {
         if self.panic_mode {
@@ -256,7 +262,7 @@ impl Parser<'_> {
         if token.token_type == TokenType::EOF {
             eprint!(" at end");
         } else if token.token_type == TokenType::Error {
-          // Nothing.
+            // Nothing.
         } else {
             eprint!(" at '{}'", self.scanner.get_lexeme(token));
         }

@@ -1,11 +1,10 @@
-use std::vec::Vec;
+use crate::value::*;
 use num_derive::FromPrimitive;
 use num_derive::ToPrimitive;
 use num_traits::ToPrimitive;
-use crate::value::*;
+use std::vec::Vec;
 
-#[derive(FromPrimitive)]
-#[derive(ToPrimitive)]
+#[derive(FromPrimitive, ToPrimitive)]
 pub enum Op {
     Constant,
     Add,
@@ -27,7 +26,7 @@ impl Chunk {
         Chunk {
             code: Vec::new(),
             lines: Vec::new(),
-            constants: ValueArray::new()
+            constants: ValueArray::new(),
         }
     }
 

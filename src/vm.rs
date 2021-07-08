@@ -73,36 +73,36 @@ impl VM {
                     self.ip += 1;
                     let constant = self.chunk.constants.values[byte];
                     self.push(constant);
-                },
-                Op::Add      => {
+                }
+                Op::Add => {
                     let b = self.pop();
                     let a = self.pop();
                     self.push(a + b);
-                },
+                }
                 Op::Subtract => {
                     let b = self.pop();
                     let a = self.pop();
                     self.push(a - b);
-                },
+                }
                 Op::Multiply => {
                     let b = self.pop();
                     let a = self.pop();
                     self.push(a * b);
-                },
-                Op::Divide   => {
+                }
+                Op::Divide => {
                     let b = self.pop();
                     let a = self.pop();
                     self.push(a / b);
-                },
-                Op::Negate   => {
+                }
+                Op::Negate => {
                     let value = self.pop();
                     self.push(-value);
-                },
-                Op::Return   => {
+                }
+                Op::Return => {
                     print_value(self.pop());
                     println!("");
                     return InterpretResult::Ok;
-                },
+                }
             };
         }
     }

@@ -17,9 +17,9 @@ impl Chunk {
         print!("{:04} ", offset);
 
         if offset > 0 && self.lines[offset] == self.lines[offset - 1] {
-          print!("   | ");
+            print!("   | ");
         } else {
-          print!("{:4} ", self.lines[offset]);
+            print!("{:4} ", self.lines[offset]);
         }
 
         let instruction = self.code[offset];
