@@ -1,4 +1,5 @@
 use crate::chunk::*;
+use crate::compiler::*;
 use crate::value::*;
 use num_traits::FromPrimitive;
 
@@ -22,8 +23,16 @@ impl VM {
     }
 
     pub fn interpret(&mut self, source: &String) -> InterpretResult {
-        crate::compiler::compile(source);
-        InterpretResult::Ok
+        let mut chunk = Chunk::new();
+        let mut compiler = Compiler::new(source, &mut chunk);
+
+        if !compiler.compile() {
+            return InterpretResult::CompileError;
+        }
+
+        self.chunk = chunk;
+        self.ip = 0;
+        self.run()
     }
 
     fn reset_stack(&mut self) {

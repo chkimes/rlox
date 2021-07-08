@@ -5,12 +5,10 @@ mod scanner;
 mod value;
 mod vm;
 
-use chunk::*;
 use std::io::Write;
 use vm::*;
 
 fn main() {
-    let mut chunk = Chunk::new();
     let mut vm = VM::new();
     let args: Vec<String> = std::env::args().collect();
 

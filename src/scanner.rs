@@ -3,13 +3,14 @@ use num_derive::ToPrimitive;
 use std::convert::TryInto;
 use std::iter::*;
 
-pub struct Scanner<'a>{
-    pub source: &'a [u8],
+pub struct Scanner<'a> {
+    pub source: &'a[u8],
     start: usize,
     current: usize,
     line: u16,
 }
 
+#[derive(Copy, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub start: usize,
@@ -17,8 +18,19 @@ pub struct Token {
     pub line: u16,
 }
 
-#[derive(FromPrimitive)]
-#[derive(ToPrimitive)]
+impl Token {
+    pub fn null() -> Token {
+        Token {
+            token_type: TokenType::Error,
+            start: 0,
+            length: 0,
+            line: 0,
+        }
+    }
+}
+
+#[derive(FromPrimitive, ToPrimitive)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen, RightParen,
@@ -277,6 +289,10 @@ impl Scanner<'_> {
             length: 0,
             line: self.line,
         }
+    }
+
+    pub fn get_lexeme(&self, token: &Token) -> &str {
+        return std::str::from_utf8(&self.source[token.start..token.start+token.length]).unwrap();
     }
 }
 
