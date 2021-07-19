@@ -1,6 +1,8 @@
 mod chunk;
 mod compiler;
 mod debug;
+mod memory;
+mod object;
 mod scanner;
 mod value;
 mod vm;

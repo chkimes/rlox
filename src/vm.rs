@@ -1,5 +1,7 @@
 use crate::chunk::*;
 use crate::compiler::*;
+use crate::memory::*;
+use crate::object::*;
 use crate::value::*;
 use crate::value::Value::*;
 use num_traits::FromPrimitive;
@@ -9,8 +11,8 @@ const STACK_MAX: usize = 256;
 pub struct VM {
     pub chunk: Chunk,
     pub ip: usize,
-    pub stack: [Value; STACK_MAX],
-    pub stack_top: usize,
+    pub stack: Vec<Value>,
+    pub heap: Heap,
 }
 
 impl VM {
@@ -18,8 +20,8 @@ impl VM {
         VM {
             chunk: Chunk::new(),
             ip: 0,
-            stack: [Nil; STACK_MAX],
-            stack_top: 0,
+            stack: vec![Nil; STACK_MAX],
+            heap: Heap::new(),
         }
     }
 
@@ -37,21 +39,19 @@ impl VM {
     }
 
     fn reset_stack(&mut self) {
-        self.stack_top = 0;
+        self.stack.clear();
     }
 
     fn push(&mut self, value: Value) {
-        self.stack[self.stack_top] = value;
-        self.stack_top += 1;
+        self.stack.push(value);
     }
 
     fn pop(&mut self) -> Value {
-        self.stack_top -= 1;
-        self.stack[self.stack_top]
+        self.stack.pop().unwrap()
     }
 
     fn peek(&mut self, distance: usize) -> Value {
-        let index = self.stack_top - 1 - distance;
+        let index = self.stack.len() - 1 - distance;
         return self.stack[index];
     }
 
@@ -59,8 +59,7 @@ impl VM {
         loop {
             if cfg!(feature = "DEBUG_TRACE_EXECUTION") {
                 print!("          ");
-                for slot in 0..self.stack_top {
-                    let value = self.stack[slot];
+                for value in &self.stack {
                     print!("[ ");
                     print_value(value);
                     print!(" ]");
@@ -90,7 +89,22 @@ impl VM {
                 }
                 Op::Greater => crate::binary_op!(self, Bool, >),
                 Op::Less => crate::binary_op!(self, Bool, <),
-                Op::Add => crate::binary_op!(self, Number, +),
+                Op::Add => {
+                    match (self.pop(), self.pop()) {
+                        (Number(b), Number(a)) => {
+                            self.push(Number(a + b));
+                        }
+                        (Object(Obj::LString(b)), Object(Obj::LString(a))) => {
+                            let str = format!("{}{}", a.obj(), b.obj());
+                            let r = self.heap.manage(str);
+                            self.push(Object(Obj::LString(r)));
+                        }
+                        _ => {
+                            crate::error!(self, "Operands must be numbers or strings.");
+                            return InterpretResult::RuntimeError;
+                        }
+                    }
+                }
                 Op::Subtract => crate::binary_op!(self, Number, -),
                 Op::Multiply => crate::binary_op!(self, Number, *),
                 Op::Divide => crate::binary_op!(self, Number, /),
@@ -99,15 +113,16 @@ impl VM {
                     self.push(Bool(is_falsey(val)))
                 }
                 Op::Negate => {
-                    if !self.peek(0).is_number() {
-                        crate::error!(self, "Operand must be a number.");
-                        return InterpretResult::RuntimeError;
+                    match self.pop() {
+                        Number(n) => self.push(Number(-n)),
+                        _ => {
+                            crate::error!(self, "Operand must be a number.");
+                            return InterpretResult::RuntimeError;
+                        }
                     }
-                    let value = self.pop();
-                    self.push(Number(-value.as_number()));
                 }
                 Op::Return => {
-                    print_value(self.pop());
+                    print_value(&self.pop());
                     println!("");
                     return InterpretResult::Ok;
                 }
@@ -122,6 +137,10 @@ impl VM {
         let line = self.chunk.lines[instruction];
         eprintln!("[line {}] in script", line);
         self.reset_stack();
+    }
+
+    fn free_objects(&mut self) {
+        self.heap.clear();
     }
 }
 
@@ -147,13 +166,15 @@ macro_rules! error {
 macro_rules! binary_op {
     ($vm:expr, $value_ctor:tt, $op:tt) => {
         {
-            if !$vm.peek(0).is_number() || !$vm.peek(1).is_number() {
-                crate::error!($vm, "Operands must be numbers.");
-                return InterpretResult::RuntimeError;
+            match ($vm.pop(), $vm.pop()) {
+                (Number(b), Number(a)) => {
+                    $vm.push($value_ctor(a $op b));
+                },
+                _ => {
+                    crate::error!($vm, "Operands must be numbers.");
+                    return InterpretResult::RuntimeError;
+                }
             }
-            let b = $vm.pop().as_number();
-            let a = $vm.pop().as_number();
-            $vm.push($value_ctor(a $op b));
         }
     }
 }

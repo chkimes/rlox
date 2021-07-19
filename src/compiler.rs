@@ -1,4 +1,6 @@
 use crate::chunk::*;
+use crate::memory::*;
+use crate::object::*;
 use crate::scanner::*;
 use crate::value::*;
 
@@ -9,6 +11,7 @@ use num_traits::ToPrimitive;
 pub struct Compiler<'a> {
     parser: Parser<'a>,
     compiling_chunk: &'a mut Chunk,
+    heap: Heap,
 }
 
 struct Parser<'a> {
@@ -78,6 +81,7 @@ fn get_rule<'a>(token_type: TokenType) -> ParseRule<'a> {
         TokenType::Nil          |
         TokenType::False        |
         TokenType::True         => ParseRule { prefix: Some(Compiler::literal),  infix: None,                   precedence: Precedence::None },
+        TokenType::String       => ParseRule { prefix: Some(Compiler::string),   infix: None,                   precedence: Precedence::None },
         _                       => ParseRule { prefix: None,                     infix: None,                   precedence: Precedence::None }
     }
 }
@@ -90,6 +94,7 @@ impl<'a> Compiler<'a> {
         Compiler {
             parser: parser,
             compiling_chunk: chunk,
+            heap: Heap::new(),
         }
     }
 
@@ -152,6 +157,29 @@ impl<'a> Compiler<'a> {
             TokenType::True  => self.emit_op(Op::True),
             _ => return, // Unreachable.
         }
+    }
+
+    fn string(&mut self) {
+        let token = self.parser.previous;
+        let mut vec = vec![0; token.length - 2];
+        vec.clone_from_slice(&self.parser.scanner.source[token.start + 1..token.start + token.length - 1]);
+        let str = String::from_utf8(vec).unwrap();
+
+        let interned = self.intern_string(str);
+        self.emit_constant(interned);
+    }
+
+    // this is kind of a goofy workaround
+    // We have to keep a reference to the string from the compiler so
+    // that the pointer remains valid. Ideally we would do this from
+    // the VM heap, but we don't exactly have access to the VM heap at this
+    // point because the compiler doesn't know about it. The probably
+    // correct thing to do here is to generate a Constant type to return
+    // from the compiler and then handle the heap in the VM but the lazy
+    // option is to jam it onto the compiler since it will live for the
+    // lifetime of the VM run method.
+    fn intern_string(&mut self, str: String) -> Value {
+        Value::Object(Obj::LString(self.heap.manage(str)))
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) {
