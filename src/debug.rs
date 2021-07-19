@@ -1,7 +1,6 @@
 use num_traits::FromPrimitive;
 
 use crate::chunk::*;
-use crate::value::*;
 
 impl Chunk {
     pub fn disassemble(&self, name: &str) {
@@ -52,7 +51,7 @@ fn constant_instruction(name: &str, chunk: &Chunk, offset: usize) -> usize {
     let constant = chunk.code[offset + 1];
 
     print!("{:16} {:4} '", name, constant);
-    print_value(&chunk.constants.values[constant as usize]);
+    chunk.constants[constant as usize].print();
     println!("'");
 
     return offset + 2;

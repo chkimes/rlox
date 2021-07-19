@@ -1,8 +1,5 @@
 use crate::chunk::*;
-use crate::memory::*;
-use crate::object::*;
 use crate::scanner::*;
-use crate::value::*;
 
 use num_derive::FromPrimitive;
 use num_derive::ToPrimitive;
@@ -11,7 +8,6 @@ use num_traits::ToPrimitive;
 pub struct Compiler<'a> {
     parser: Parser<'a>,
     compiling_chunk: &'a mut Chunk,
-    heap: Heap,
 }
 
 struct Parser<'a> {
@@ -94,7 +90,6 @@ impl<'a> Compiler<'a> {
         Compiler {
             parser: parser,
             compiling_chunk: chunk,
-            heap: Heap::new(),
         }
     }
 
@@ -165,21 +160,7 @@ impl<'a> Compiler<'a> {
         vec.clone_from_slice(&self.parser.scanner.source[token.start + 1..token.start + token.length - 1]);
         let str = String::from_utf8(vec).unwrap();
 
-        let interned = self.intern_string(str);
-        self.emit_constant(interned);
-    }
-
-    // this is kind of a goofy workaround
-    // We have to keep a reference to the string from the compiler so
-    // that the pointer remains valid. Ideally we would do this from
-    // the VM heap, but we don't exactly have access to the VM heap at this
-    // point because the compiler doesn't know about it. The probably
-    // correct thing to do here is to generate a Constant type to return
-    // from the compiler and then handle the heap in the VM but the lazy
-    // option is to jam it onto the compiler since it will live for the
-    // lifetime of the VM run method.
-    fn intern_string(&mut self, str: String) -> Value {
-        Value::Object(Obj::LString(self.heap.manage(str)))
+        self.emit_constant(Constant::String(str));
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) {
@@ -218,7 +199,7 @@ impl<'a> Compiler<'a> {
             .get_lexeme(&self.parser.previous)
             .parse()
             .unwrap();
-        self.emit_constant(Value::Number(value));
+        self.emit_constant(Constant::Number(value));
     }
 
     fn emit_return(&mut self) {
@@ -243,14 +224,14 @@ impl<'a> Compiler<'a> {
         self.compiling_chunk.write(byte2, self.parser.previous.line);
     }
 
-    fn emit_constant(&mut self, value: Value) {
+    fn emit_constant(&mut self, constant: Constant) {
         self.emit_op(Op::Constant);
-        let constant = self.make_constant(value);
+        let constant = self.make_constant(constant);
         self.emit_byte(constant);
     }
 
-    fn make_constant(&mut self, value: Value) -> u8 {
-        let constant = self.compiling_chunk.add_constant(value);
+    fn make_constant(&mut self, constant: Constant) -> u8 {
+        let constant = self.compiling_chunk.add_constant(constant);
         if constant > u8::MAX as usize {
             self.parser.error("Too many constants in one chunk");
             return 0;

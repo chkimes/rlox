@@ -1,5 +1,4 @@
 use crate::object::*;
-use std::vec::Vec;
 use Value::*;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -10,21 +9,13 @@ pub enum Value {
     Nil
 }
 
-pub struct ValueArray {
-    pub values: Vec<Value>,
-}
-
-impl ValueArray {
-    pub fn new() -> ValueArray {
-        ValueArray { values: Vec::new() }
-    }
-}
-
-pub fn print_value(value: &Value) {
-    match value {
-        Bool(b) => print!("{}", b),
-        Number(n) => print!("{}", n),
-        Object(o) => o.print_obj(),
-        Nil => print!("nil"),
+impl Value {
+    pub fn print(&self) {
+        match self {
+            Bool(b) => print!("{}", b),
+            Number(n) => print!("{}", n),
+            Object(o) => o.print_obj(),
+            Nil => print!("nil"),
+        }
     }
 }

@@ -61,7 +61,7 @@ impl VM {
                 print!("          ");
                 for value in &self.stack {
                     print!("[ ");
-                    print_value(value);
+                    value.print();
                     print!(" ]");
                 }
                 println!("");
@@ -76,8 +76,15 @@ impl VM {
                 Op::Constant => {
                     let byte = self.chunk.code[self.ip] as usize;
                     self.ip += 1;
-                    let constant = self.chunk.constants.values[byte];
-                    self.push(constant);
+                    let constant = &self.chunk.constants[byte];
+                    let value = match constant {
+                        Constant::Number(n) => Number(*n),
+                        Constant::String(s) => {
+                            let s = s.clone();
+                            Object(Obj::LString(self.heap.manage_str(s)))
+                        }
+                    };
+                    self.push(value);
                 }
                 Op::Nil => self.push(Nil),
                 Op::False => self.push(Bool(false)),
@@ -96,7 +103,7 @@ impl VM {
                         }
                         (Object(Obj::LString(b)), Object(Obj::LString(a))) => {
                             let str = format!("{}{}", a.obj(), b.obj());
-                            let r = self.heap.manage(str);
+                            let r = self.heap.manage_str(str);
                             self.push(Object(Obj::LString(r)));
                         }
                         _ => {
@@ -122,7 +129,7 @@ impl VM {
                     }
                 }
                 Op::Return => {
-                    print_value(&self.pop());
+                    self.pop().print();
                     println!("");
                     return InterpretResult::Ok;
                 }

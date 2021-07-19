@@ -1,4 +1,3 @@
-use crate::value::*;
 use num_derive::FromPrimitive;
 use num_derive::ToPrimitive;
 use num_traits::ToPrimitive;
@@ -25,7 +24,21 @@ pub enum Op {
 pub struct Chunk {
     pub code: Vec<u8>,
     pub lines: Vec<u16>,
-    pub constants: ValueArray,
+    pub constants: Vec<Constant>,
+}
+
+pub enum Constant {
+    Number(f64),
+    String(String),
+}
+
+impl Constant {
+    pub fn print(&self) {
+        match self {
+            Constant::Number(n) => print!("{}", n),
+            Constant::String(s) => print!("{}", s),
+        }
+    }
 }
 
 impl Chunk {
@@ -33,7 +46,7 @@ impl Chunk {
         Chunk {
             code: Vec::new(),
             lines: Vec::new(),
-            constants: ValueArray::new(),
+            constants: Vec::new(),
         }
     }
 
@@ -46,8 +59,8 @@ impl Chunk {
         self.write(ToPrimitive::to_u8(&op).unwrap(), line);
     }
 
-    pub fn add_constant(&mut self, value: Value) -> usize {
-        self.constants.values.push(value);
-        return self.constants.values.len() - 1;
+    pub fn add_constant(&mut self, constant: Constant) -> usize {
+        self.constants.push(constant);
+        return self.constants.len() - 1;
     }
 }
